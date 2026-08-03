@@ -67,15 +67,70 @@ h1 {
   color: var(--muted);
 }
 
-.widget-area {
-  min-height: 8rem;
+.guide {
   border: 1px solid var(--line);
   border-radius: 1rem;
   background: rgba(12, 18, 24, 0.45);
   backdrop-filter: blur(8px);
+  padding: 1.75rem 1.75rem 1.5rem;
+}
+
+.guide-title {
+  margin: 0 0 1.1rem;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+  display: grid;
+  gap: 1rem;
+}
+
+.steps li {
+  position: relative;
+  counter-increment: step;
+  padding-left: 2.5rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0;
   display: grid;
   place-items: center;
-  padding: 1.5rem 1.25rem;
+  width: 1.65rem;
+  height: 1.65rem;
+  border: 1px solid rgba(61, 154, 139, 0.45);
+  border-radius: 50%;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.steps strong {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.guide-note {
+  margin: 1.5rem 0 0;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--muted);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -83,7 +138,7 @@ h1 {
     animation: rise 0.7s ease-out both;
   }
 
-  .widget-area {
+  .guide {
     animation: rise 0.7s ease-out 0.15s both;
   }
 }

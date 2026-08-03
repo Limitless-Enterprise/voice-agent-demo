@@ -12,15 +12,42 @@
         <p class="brand">Limitless Enterprise</p>
         <h1>Voice Agent Demo</h1>
         <p class="lede">
-          Test page for the ElevenLabs voice agent. Use the widget below to try
-          the conversation experience.
+          Test page for the ElevenLabs voice agent. The assistant is docked in
+          the corner of this page — open it whenever you're ready to talk.
         </p>
       </header>
 
-      <section class="widget-area" aria-label="Voice agent">
-        <elevenlabs-convai agent-id="agent_9201kvqe56a2ebwafvj92w81xy68"></elevenlabs-convai>
+      <section class="guide" aria-label="How to use the voice agent">
+        <h2 class="guide-title">Try the conversation</h2>
+        <ol class="steps">
+          <li>
+            Find the assistant bubble in the <strong>bottom-right corner</strong>
+            of this page.
+          </li>
+          <li>
+            Choose <strong>Start a call</strong> to speak with the agent, and
+            allow microphone access when your browser asks.
+          </li>
+          <li>
+            Prefer to type? Use the <strong>chat</strong> button next to it to
+            open the same agent as a text conversation.
+          </li>
+        </ol>
+        <p class="guide-note">
+          Works best in a recent version of Chrome, Edge, or Safari with your
+          sound turned on.
+        </p>
       </section>
     </main>
+
+    <!--
+      The widget must stay a direct child of <body>. It positions its expanded
+      panel with position: fixed, so any ancestor with a transform, filter,
+      backdrop-filter, or similar becomes its containing block and collapses the
+      panel to the size of that ancestor.
+    -->
+    <elevenlabs-convai agent-id="agent_9201kvqe56a2ebwafvj92w81xy68"></elevenlabs-convai>
+
     <script
       src="https://unpkg.com/@elevenlabs/convai-widget-embed"
       async
