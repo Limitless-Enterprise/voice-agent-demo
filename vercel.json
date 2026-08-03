@@ -1,4 +1,7 @@
 {
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "installCommand": "pnpm install",
+  "buildCommand": null,
+  "outputDirectory": "."
 }
