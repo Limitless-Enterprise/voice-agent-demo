@@ -3,55 +3,57 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Voice Agent Demo — Limitless Enterprise</title>
+    <title>Purple Basil Mia — Voice Receptionist Launcher</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <main class="page">
       <header class="hero">
-        <p class="brand">Limitless Enterprise</p>
-        <h1>Voice Agent Demo</h1>
+        <p class="brand">Purple Basil Medspa</p>
+        <h1>Meet Mia, your AI receptionist</h1>
         <p class="lede">
-          Test page for the ElevenLabs voice agent. The assistant is docked in
-          the corner of this page — open it whenever you're ready to talk.
+          Need help choosing a treatment? Ask Mia about services, pricing,
+          memberships, booking, and skin concerns. Text is available first;
+          voice starts only after you choose it.
         </p>
       </header>
 
-      <section class="guide" aria-label="How to use the voice agent">
+      <section class="guide" aria-label="How to use Mia">
         <h2 class="guide-title">Try the conversation</h2>
         <ol class="steps">
           <li>
-            Find the assistant bubble in the <strong>bottom-right corner</strong>
-            of this page.
+            Use the branded <strong>Ask Mia</strong> launcher in the
+            bottom-right corner. The conversation is not auto-opened.
           </li>
           <li>
-            Choose <strong>Start a call</strong> to speak with the agent, and
-            allow microphone access when your browser asks.
+            Start with text to ask about treatments, memberships, pricing, or
+            booking preparation.
           </li>
           <li>
-            Prefer to type? Use the <strong>chat</strong> button next to it to
-            open the same agent as a text conversation.
+            Prefer voice? Choose the voice option inside the ElevenLabs widget
+            only when you are ready to grant microphone access.
           </li>
         </ol>
         <p class="guide-note">
-          Works best in a recent version of Chrome, Edge, or Safari with your
-          sound turned on.
+          Mia gives general information, not medical advice. Purple Basil’s
+          licensed team can help with personal recommendations.
         </p>
       </section>
     </main>
 
     <!--
-      The widget must stay a direct child of <body>. It positions its expanded
-      panel with position: fixed, so any ancestor with a transform, filter,
-      backdrop-filter, or similar becomes its containing block and collapses the
-      panel to the size of that ancestor.
+      The vendor widget stays a direct child of <body>. The first-party launcher
+      owns branding, timing, suppression, and manual open/collapse/dismiss state;
+      ElevenLabs remains the conversation engine.
     -->
-    <elevenlabs-convai agent-id="agent_9201kvqe56a2ebwafvj92w81xy68"></elevenlabs-convai>
+    <elevenlabs-convai></elevenlabs-convai>
+    <div id="voice-widget-launcher-root"></div>
 
-    <script
-      src="https://unpkg.com/@elevenlabs/convai-widget-embed"
-      async
-      type="text/javascript"
-    ></script>
+    <script type="module">
+      import { mountVoiceWidgetLauncher } from './src/voice-widget-launcher.mjs';
+      import { purpleBasilVoiceWidgetConfig } from './src/voice-widget-config.mjs';
+
+      mountVoiceWidgetLauncher({ config: purpleBasilVoiceWidgetConfig });
+    </script>
   </body>
 </html>
