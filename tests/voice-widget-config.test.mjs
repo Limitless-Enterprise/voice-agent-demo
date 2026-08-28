@@ -31,6 +31,22 @@ test('Purple Basil config encodes Mia launcher copy, capabilities, environment v
   assert.equal(purpleBasilVoiceWidgetConfig.behavior.voiceRequiresExplicitGesture, true);
   assert.equal(purpleBasilVoiceWidgetConfig.behavior.textFirst, true);
   assert.equal(purpleBasilVoiceWidgetConfig.behavior.noAutoplay, true);
+  assert.equal(purpleBasilVoiceWidgetConfig.analytics.experimentId, 'purple-basil-voice-widget-funnel-v1');
+  assert.deepEqual(Object.keys(purpleBasilVoiceWidgetConfig.analytics.experiments.dimensions), [
+    'launcherLabel',
+    'copy',
+    'timing',
+    'modality',
+    'quickReplies',
+  ]);
+  assert.equal(
+    purpleBasilVoiceWidgetConfig.analytics.annoyanceGuardrails.dismissRateDenominator,
+    'voice_widget_impression',
+  );
+  assert.equal(
+    purpleBasilVoiceWidgetConfig.analytics.annoyanceGuardrails.closeRateDenominator,
+    'voice_widget_open',
+  );
   assert.ok(purpleBasilVoiceWidgetConfig.suppression.promptDismissTtlMs > 0);
 });
 

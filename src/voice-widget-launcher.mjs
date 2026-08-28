@@ -1,4 +1,5 @@
 import { purpleBasilVoiceWidgetConfig, resolveElevenLabsAgentId } from './voice-widget-config.mjs';
+import { createVoiceWidgetAnalytics, mapVendorToolCallToWidgetEvent } from './voice-widget-analytics.mjs';
 
 const VENDOR_TAG = 'elevenlabs-convai';
 const VENDOR_ELEMENT_ID = 'voice-widget-conversation';
@@ -103,6 +104,7 @@ export function createVoiceWidgetController({
   now = () => Date.now(),
   vendorElement,
   pageType: currentPageType = 'home',
+  analytics,
   onChange,
 } = {}) {
   if (!config) throw new TypeError('config is required');
@@ -115,8 +117,20 @@ export function createVoiceWidgetController({
     promptVisible: false,
     dismissed: false,
     openSource: null,
+    firstUserTurnTracked: false,
+    firstAgentResponseTracked: false,
     lastAction: 'initialized',
   };
+
+  const emitAnalytics = (eventName, properties = {}, options = {}) =>
+    analytics?.emit?.(
+      eventName,
+      {
+        route_category: currentPageType,
+        ...properties,
+      },
+      options,
+    );
 
   const emit = () => {
     if (typeof onChange === 'function') onChange({ ...state });
@@ -155,6 +169,11 @@ export function createVoiceWidgetController({
     state.promptVisible = true;
     state.lastAction = `prompt:${reason}`;
     setSessionPromptCount(getSessionPromptCount() + 1);
+    emitAnalytics(
+      'voice_widget_impression',
+      { source: 'teaser', route_category: context?.pageType || currentPageType },
+      { dedupeKey: `teaser:${context?.pageType || currentPageType}` },
+    );
     emit();
     return true;
   }
@@ -163,6 +182,9 @@ export function createVoiceWidgetController({
     if (!state.promptVisible) return false;
     state.promptVisible = false;
     state.lastAction = `prompt-hidden:${reason}`;
+    if (reason === 'prompt-timeout') {
+      emitAnalytics('voice_widget_teaser_timeout', { source: 'teaser' });
+    }
     emit();
     return true;
   }
@@ -175,6 +197,12 @@ export function createVoiceWidgetController({
     state.promptVisible = false;
     state.openSource = source;
     state.lastAction = `open-failed:${source}`;
+    emitAnalytics('voice_widget_error', {
+      source,
+      stage: 'open',
+      code: 'vendor_not_ready',
+      recoverable: true,
+    });
     emit();
   }
 
@@ -189,6 +217,8 @@ export function createVoiceWidgetController({
       state.promptVisible = false;
       state.openSource = source;
       state.lastAction = `open:${source}`;
+      emitAnalytics('voice_widget_open', { source });
+      emitAnalytics('voice_widget_mode_start', { source, mode: 'text' });
       emit();
       return true;
     }
@@ -219,11 +249,13 @@ export function createVoiceWidgetController({
 
   function syncCollapsed(source = 'vendor') {
     vendorElement?.setCollapsedEntrySuppressed?.(true);
+    const wasOpen = state.panelOpen;
     state.panelOpen = false;
     state.pendingOpen = false;
     state.openFailed = false;
     state.promptVisible = false;
     state.lastAction = `collapsed:${source}`;
+    if (wasOpen) emitAnalytics('voice_widget_minimize', { source });
     emit();
     return true;
   }
@@ -236,6 +268,7 @@ export function createVoiceWidgetController({
     state.openFailed = false;
     state.promptVisible = false;
     state.lastAction = clicked ? `collapse:${source}` : `collapse-local:${source}`;
+    emitAnalytics('voice_widget_minimize', { source });
     emit();
     return Boolean(clicked);
   }
@@ -246,7 +279,50 @@ export function createVoiceWidgetController({
     state.promptVisible = false;
     state.dismissed = true;
     state.lastAction = `dismiss:${source}`;
+    emitAnalytics('voice_widget_dismiss', { source });
     emit();
+    return true;
+  }
+
+  function recordFirstUserTurn({ mode = state.openSource === 'voice' ? 'voice' : 'text' } = {}) {
+    if (state.firstUserTurnTracked) return false;
+    state.firstUserTurnTracked = true;
+    emitAnalytics('voice_widget_first_user_turn', { mode }, { dedupeKey: 'first-user-turn' });
+    emit();
+    return true;
+  }
+
+  function recordFirstAgentResponse({ mode = state.openSource === 'voice' ? 'voice' : 'text', code = 'ok' } = {}) {
+    if (state.firstAgentResponseTracked) return false;
+    state.firstAgentResponseTracked = true;
+    emitAnalytics('voice_widget_first_agent_response', { mode, code }, { dedupeKey: 'first-agent-response' });
+    emit();
+    return true;
+  }
+
+  function recordContactCapture({ contactType = 'unknown' } = {}) {
+    emitAnalytics('voice_widget_contact_capture', { contact_type: contactType });
+    return true;
+  }
+
+  function recordHandoff({ state: handoffState = 'selected', destinationType = 'staff' } = {}) {
+    emitAnalytics('voice_widget_handoff', {
+      handoff_state: handoffState,
+      handoff_destination_type: destinationType,
+    });
+    return true;
+  }
+
+  function recordBookingClick({ destination = 'booking_system', placement = 'assistant' } = {}) {
+    emitAnalytics('voice_widget_booking_click', {
+      booking_destination: destination,
+      booking_placement: placement,
+    });
+    return true;
+  }
+
+  function recordError({ stage = 'vendor', code = 'unknown', recoverable = true } = {}) {
+    emitAnalytics('voice_widget_error', { stage, code, recoverable });
     return true;
   }
 
@@ -270,6 +346,12 @@ export function createVoiceWidgetController({
     collapse,
     syncCollapsed,
     dismiss,
+    recordFirstUserTurn,
+    recordFirstAgentResponse,
+    recordContactCapture,
+    recordHandoff,
+    recordBookingClick,
+    recordError,
     resetTimingState,
   };
 }
@@ -365,15 +447,52 @@ function renderLauncher(root, config, controller, { conversationId = VENDOR_ELEM
   return applyState;
 }
 
+function bindVendorInstrumentation(element, controller) {
+  if (!element || !controller) return () => {};
+  const disposers = [];
+  const onToolCall = (event) => {
+    const mapped = mapVendorToolCallToWidgetEvent(event.detail || {});
+    if (!mapped) return;
+    const [eventName, properties] = mapped;
+    if (eventName === 'voice_widget_booking_click') controller.recordBookingClick(properties);
+    if (eventName === 'voice_widget_handoff') controller.recordHandoff(properties);
+  };
+  const onUserTurn = (event) => controller.recordFirstUserTurn({ mode: event.detail?.mode });
+  const onAgentResponse = (event) => controller.recordFirstAgentResponse({ mode: event.detail?.mode, code: 'ok' });
+  const onError = (event) =>
+    controller.recordError({ stage: 'vendor', code: event.detail?.code || 'vendor_error', recoverable: true });
+
+  element.addEventListener('elevenlabs-convai:call', onToolCall);
+  element.addEventListener('voice-widget:first-user-turn', onUserTurn);
+  element.addEventListener('voice-widget:first-agent-response', onAgentResponse);
+  element.addEventListener('voice-widget:error', onError);
+  disposers.push(() => element.removeEventListener('elevenlabs-convai:call', onToolCall));
+  disposers.push(() => element.removeEventListener('voice-widget:first-user-turn', onUserTurn));
+  disposers.push(() => element.removeEventListener('voice-widget:first-agent-response', onAgentResponse));
+  disposers.push(() => element.removeEventListener('voice-widget:error', onError));
+  return () => disposers.forEach((dispose) => dispose());
+}
+
 export function mountVoiceWidgetLauncher({
   config = purpleBasilVoiceWidgetConfig,
   root = document.getElementById('voice-widget-launcher-root'),
+  analytics,
 } = {}) {
   if (!root) throw new Error('voice-widget-launcher-root not found');
   const vendorElement = ensureVendorElement(config);
   const vendor = createDomVendorElement(vendorElement);
   ensureVendorScript(config);
   const pageType = config.pageContext.getPageType(window.location.pathname);
+  const analyticsClient =
+    analytics ||
+    createVoiceWidgetAnalytics({
+      config,
+      storage: window.localStorage,
+      sessionStorage: window.sessionStorage,
+      viewportWidth: window.innerWidth,
+      userAgent: navigator.userAgent,
+    });
+  analyticsClient.emit('voice_widget_eligible', { route_category: pageType, suppression_reason: 'eligible' }, { dedupeKey: `eligible:${pageType}` });
   let applyState = () => {};
   const controller = createVoiceWidgetController({
     config,
@@ -381,10 +500,17 @@ export function mountVoiceWidgetLauncher({
     sessionStorage: window.sessionStorage,
     vendorElement: vendor,
     pageType,
+    analytics: analyticsClient,
     onChange: (state) => applyState(state),
   });
   applyState = renderLauncher(root, config, controller, { conversationId: vendorElement.id });
+  analyticsClient.emit('voice_widget_impression', { route_category: pageType, source: 'launcher' }, { dedupeKey: `launcher:${pageType}` });
   vendor.onCollapsed(() => controller.syncCollapsed('vendor'));
+  bindVendorInstrumentation(vendorElement, controller);
+  vendor.whenReady().then(
+    () => analyticsClient.emit('voice_widget_ready', { route_category: pageType, stage: 'vendor_ready', code: 'ok' }, { dedupeKey: `ready:${pageType}` }),
+    () => controller.recordError({ stage: 'ready', code: 'vendor_not_ready', recoverable: true }),
+  );
   const api = {
     open: controller.open,
     collapse: controller.collapse,
@@ -392,8 +518,15 @@ export function mountVoiceWidgetLauncher({
     showPrompt: controller.showPrompt,
     hidePrompt: controller.hidePrompt,
     shouldShowPrompt: controller.shouldShowPrompt,
+    recordFirstUserTurn: controller.recordFirstUserTurn,
+    recordFirstAgentResponse: controller.recordFirstAgentResponse,
+    recordContactCapture: controller.recordContactCapture,
+    recordHandoff: controller.recordHandoff,
+    recordBookingClick: controller.recordBookingClick,
+    recordError: controller.recordError,
     resetTimingState: controller.resetTimingState,
     getState: controller.getState,
+    analytics: analyticsClient,
     config,
   };
 

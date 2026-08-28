@@ -34,6 +34,16 @@ const defaultSuppression = {
   promptSessionCap: 1,
 };
 
+const defaultExperiments = {
+  dimensions: {
+    launcherLabel: { arms: ['task-led'] },
+    copy: { arms: ['task-led'] },
+    timing: { arms: ['dwell-plus-intent'] },
+    modality: { arms: ['text-first-explicit-voice'] },
+    quickReplies: { arms: ['treatment-pricing-booking'] },
+  },
+};
+
 export function createVoiceWidgetConfig(options) {
   if (!options || typeof options !== 'object') {
     throw new TypeError('createVoiceWidgetConfig requires an options object');
@@ -50,6 +60,7 @@ export function createVoiceWidgetConfig(options) {
   const vendor = {
     elevenLabs: {
       scriptSrc: 'https://unpkg.com/@elevenlabs/convai-widget-embed',
+      packageVersion: '0.17.1',
       agentIds: {},
       ...(options.vendor?.elevenLabs || {}),
     },
@@ -74,6 +85,7 @@ export function createVoiceWidgetConfig(options) {
 
   return Object.freeze({
     siteId: options.siteId,
+    version: options.version || 'voice-widget-config-v1',
     environment: options.environment || 'production',
     locale: options.locale || 'en-US',
     timezone: options.timezone || 'America/Chicago',
@@ -83,6 +95,7 @@ export function createVoiceWidgetConfig(options) {
     capabilities: Object.freeze([...options.capabilities]),
     copy: Object.freeze({
       ...copy,
+      version: copy.version || options.copyVersion || 'copy-v1',
       quickReplies: Object.freeze([...copy.quickReplies]),
       contextPrompts: Object.freeze({ ...copy.contextPrompts }),
     }),
@@ -99,11 +112,29 @@ export function createVoiceWidgetConfig(options) {
       namespace: `voice_widget.${options.siteId}`,
       experimentId: null,
       variant: 'launcher-wrapper-v1',
+      version: 'analytics-v1',
+      emitToDataLayer: true,
+      conversationJoinPolicy: 'pseudonymous-approved-only',
+      annoyanceGuardrails: Object.freeze({
+        dismissRateDenominator: 'voice_widget_impression',
+        closeRateDenominator: 'voice_widget_open',
+        immediateCloseWindowMs: 10_000,
+      }),
+      experiments: defaultExperiments,
       ...(options.analytics || {}),
+      experiments: {
+        ...defaultExperiments,
+        ...(options.analytics?.experiments || {}),
+        dimensions: {
+          ...defaultExperiments.dimensions,
+          ...(options.analytics?.experiments?.dimensions || {}),
+        },
+      },
     }),
     vendor: Object.freeze({
       elevenLabs: Object.freeze({
         scriptSrc: vendor.elevenLabs.scriptSrc,
+        packageVersion: vendor.elevenLabs.packageVersion,
         agentIds: Object.freeze({ ...vendor.elevenLabs.agentIds }),
       }),
     }),
@@ -150,9 +181,23 @@ export const purpleBasilVoiceWidgetConfig = createVoiceWidgetConfig({
     connecting: 'Connecting you to Mia…',
     unavailable: 'Mia is still loading. Please try again in a moment.',
   },
+  analytics: {
+    experimentId: 'purple-basil-voice-widget-funnel-v1',
+    variant: 'launcher-wrapper-v1',
+    experiments: {
+      dimensions: {
+        launcherLabel: { arms: ['ask-mia', 'task-led'] },
+        copy: { arms: ['role-led', 'task-led'] },
+        timing: { arms: ['launcher-only', 'dwell-plus-intent'] },
+        modality: { arms: ['text-first-explicit-voice', 'equal-mode-choice'] },
+        quickReplies: { arms: ['popular-questions', 'treatment-pricing-booking'] },
+      },
+    },
+  },
   vendor: {
     elevenLabs: {
       scriptSrc: 'https://unpkg.com/@elevenlabs/convai-widget-embed',
+      packageVersion: '0.17.1',
       agentIds: {
         production: 'agent_9201kvqe56a2ebwafvj92w81xy68',
         preview: 'agent_9201kvqe56a2ebwafvj92w81xy68',
