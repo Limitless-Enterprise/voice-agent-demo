@@ -1,5 +1,14 @@
 import { purpleBasilVoiceWidgetConfig, resolveElevenLabsAgentId } from './voice-widget-config.mjs';
 
+const VENDOR_TAG = 'elevenlabs-convai';
+const VENDOR_ELEMENT_ID = 'voice-widget-conversation';
+
+const CONTROL_LABELS = {
+  Message: ['Message', 'Chat', 'Text'],
+  Collapse: ['Collapse', 'Minimize', 'Close'],
+  Dismiss: ['Dismiss'],
+};
+
 function safeJsonParse(value) {
   try {
     return value ? JSON.parse(value) : null;
@@ -12,24 +21,26 @@ function storageKey(config, name) {
   return `${config.suppression.namespace}:${name}`;
 }
 
-function findButtonByNames(root, names) {
-  const normalized = names.map((name) => name.toLowerCase());
-  const buttons = [...root.querySelectorAll('button,[role="button"]')];
-  return buttons.find((button) => {
-    const label = [
-      button.getAttribute('aria-label'),
-      button.getAttribute('title'),
-      button.textContent,
-    ]
-      .filter(Boolean)
-      .join(' ')
-      .trim()
-      .toLowerCase();
-    return normalized.some((name) => label.includes(name.toLowerCase()));
-  });
+function isControl(node, controlName) {
+  if (!node || node.nodeType !== 1) return false;
+  const tag = node.tagName?.toLowerCase();
+  if (tag !== 'button' && node.getAttribute?.('role') !== 'button') return false;
+  const label = [node.getAttribute?.('aria-label'), node.getAttribute?.('title'), node.textContent]
+    .filter(Boolean)
+    .join(' ')
+    .trim()
+    .toLowerCase();
+  return (CONTROL_LABELS[controlName] || [controlName]).some((name) =>
+    label.includes(name.toLowerCase()),
+  );
 }
 
-export function createDomVendorElement(element) {
+function findControl(root, controlName) {
+  const buttons = [...root.querySelectorAll('button,[role="button"]')];
+  return buttons.find((button) => isControl(button, controlName));
+}
+
+export function createDomVendorElement(element, { readyTimeoutMs = 8000 } = {}) {
   const setCollapsedEntrySuppressed = (suppressed) => {
     if (!element) return;
     element.dataset.limitlessEntryState = suppressed ? 'suppressed' : 'open';
@@ -40,15 +51,46 @@ export function createDomVendorElement(element) {
     clickControl(controlName) {
       if (!element) return false;
       const root = element.shadowRoot || element;
-      const labelsByControl = {
-        Message: ['Message', 'Chat', 'Text'],
-        Collapse: ['Collapse', 'Minimize', 'Close'],
-        Dismiss: ['Dismiss'],
-      };
-      const button = findButtonByNames(root, labelsByControl[controlName] || [controlName]);
+      const button = findControl(root, controlName);
       if (!button || typeof button.click !== 'function') return false;
       button.click();
       return true;
+    },
+    whenReady() {
+      if (!element) return Promise.reject(new Error('vendor element is missing'));
+      if (element.shadowRoot) return Promise.resolve(element);
+      const defined = globalThis.customElements?.whenDefined
+        ? globalThis.customElements.whenDefined(VENDOR_TAG)
+        : Promise.resolve();
+      return defined.then(
+        () =>
+          new Promise((resolve, reject) => {
+            const deadline = Date.now() + readyTimeoutMs;
+            const check = () => {
+              if (element.shadowRoot) {
+                resolve(element);
+                return;
+              }
+              if (Date.now() >= deadline) {
+                reject(new Error('vendor widget did not become ready'));
+                return;
+              }
+              globalThis.setTimeout(check, 100);
+            };
+            check();
+          }),
+      );
+    },
+    onCollapsed(callback) {
+      if (!element || typeof callback !== 'function') return () => {};
+      const handler = (event) => {
+        const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
+        const nodes = path.length ? path : [event.target];
+        const collapsed = nodes.some((node) => node !== element && isControl(node, 'Collapse'));
+        if (collapsed) callback('vendor-control');
+      };
+      element.addEventListener('click', handler, true);
+      return () => element.removeEventListener('click', handler, true);
     },
   };
 }
@@ -59,6 +101,7 @@ export function createVoiceWidgetController({
   sessionStorage,
   now = () => Date.now(),
   vendorElement,
+  pageType: currentPageType = 'home',
   onChange,
 } = {}) {
   if (!config) throw new TypeError('config is required');
@@ -66,6 +109,8 @@ export function createVoiceWidgetController({
   const sessionStore = sessionStorage || globalThis.sessionStorage || durableStorage;
   const state = {
     panelOpen: false,
+    pendingOpen: false,
+    openFailed: false,
     promptVisible: false,
     dismissed: false,
     openSource: null,
@@ -75,6 +120,8 @@ export function createVoiceWidgetController({
   const emit = () => {
     if (typeof onChange === 'function') onChange({ ...state });
   };
+
+  let awaitedVendorReady = false;
 
   const promptDismissKey = storageKey(config, 'prompt-dismissed-until');
   const sessionKey = config.suppression.sessionStorageKey;
@@ -95,15 +142,15 @@ export function createVoiceWidgetController({
     sessionStore?.setItem(sessionKey, JSON.stringify({ promptCount: count, updatedAt: now() }));
   }
 
-  function shouldShowPrompt({ pageType = 'home', intent = true } = {}) {
-    if (state.panelOpen || pageType === 'excluded') return false;
+  function shouldShowPrompt({ pageType = currentPageType, intent = true } = {}) {
+    if (state.panelOpen || state.pendingOpen || pageType === 'excluded') return false;
     if (config.behavior.promptRequiresIntent && !intent) return false;
     if (getPromptDismissedUntil() > now()) return false;
     return getSessionPromptCount() < config.suppression.promptSessionCap;
   }
 
-  function showPrompt(reason = 'timer') {
-    if (!shouldShowPrompt()) return false;
+  function showPrompt(reason = 'timer', context) {
+    if (!shouldShowPrompt(context)) return false;
     state.promptVisible = true;
     state.lastAction = `prompt:${reason}`;
     setSessionPromptCount(getSessionPromptCount() + 1);
@@ -111,22 +158,81 @@ export function createVoiceWidgetController({
     return true;
   }
 
-  function open(source = 'launcher') {
-    vendorElement?.setCollapsedEntrySuppressed?.(false);
-    const clicked = vendorElement?.clickControl?.('Message') ?? false;
-    if (!clicked) vendorElement?.setCollapsedEntrySuppressed?.(true);
-    state.panelOpen = Boolean(clicked);
+  function hidePrompt(reason = 'timeout') {
+    if (!state.promptVisible) return false;
+    state.promptVisible = false;
+    state.lastAction = `prompt-hidden:${reason}`;
+    emit();
+    return true;
+  }
+
+  function failOpen(source) {
+    vendorElement?.setCollapsedEntrySuppressed?.(true);
+    state.panelOpen = false;
+    state.pendingOpen = false;
+    state.openFailed = true;
     state.promptVisible = false;
     state.openSource = source;
-    state.lastAction = clicked ? `open:${source}` : `open-failed:${source}`;
+    state.lastAction = `open-failed:${source}`;
     emit();
-    return Boolean(clicked);
+  }
+
+  function open(source = 'launcher') {
+    if (state.panelOpen) return true;
+    vendorElement?.setCollapsedEntrySuppressed?.(false);
+    const clicked = vendorElement?.clickControl?.('Message') ?? false;
+    if (clicked) {
+      state.panelOpen = true;
+      state.pendingOpen = false;
+      state.openFailed = false;
+      state.promptVisible = false;
+      state.openSource = source;
+      state.lastAction = `open:${source}`;
+      emit();
+      return true;
+    }
+    if (!awaitedVendorReady && typeof vendorElement?.whenReady === 'function') {
+      awaitedVendorReady = true;
+      state.pendingOpen = true;
+      state.openFailed = false;
+      state.promptVisible = false;
+      state.openSource = source;
+      state.lastAction = `open-pending:${source}`;
+      emit();
+      vendorElement.whenReady().then(
+        () => {
+          if (!state.pendingOpen) return;
+          state.pendingOpen = false;
+          open(source);
+        },
+        () => {
+          if (!state.pendingOpen) return;
+          failOpen(source);
+        },
+      );
+      return false;
+    }
+    failOpen(source);
+    return false;
+  }
+
+  function syncCollapsed(source = 'vendor') {
+    vendorElement?.setCollapsedEntrySuppressed?.(true);
+    state.panelOpen = false;
+    state.pendingOpen = false;
+    state.openFailed = false;
+    state.promptVisible = false;
+    state.lastAction = `collapsed:${source}`;
+    emit();
+    return true;
   }
 
   function collapse(source = 'launcher') {
     const clicked = vendorElement?.clickControl?.('Collapse') ?? false;
     vendorElement?.setCollapsedEntrySuppressed?.(true);
     state.panelOpen = false;
+    state.pendingOpen = false;
+    state.openFailed = false;
     state.promptVisible = false;
     state.lastAction = clicked ? `collapse:${source}` : `collapse-local:${source}`;
     emit();
@@ -158,19 +264,22 @@ export function createVoiceWidgetController({
     getState: () => ({ ...state }),
     shouldShowPrompt,
     showPrompt,
+    hidePrompt,
     open,
     collapse,
+    syncCollapsed,
     dismiss,
     resetTimingState,
   };
 }
 
 function ensureVendorElement(config) {
-  let element = document.querySelector('elevenlabs-convai');
+  let element = document.querySelector(VENDOR_TAG);
   if (!element) {
-    element = document.createElement('elevenlabs-convai');
+    element = document.createElement(VENDOR_TAG);
     document.body.append(element);
   }
+  if (!element.id) element.id = VENDOR_ELEMENT_ID;
   element.setAttribute('agent-id', resolveElevenLabsAgentId(config));
   element.setAttribute('data-managed-by', 'limitless-voice-widget-launcher');
   element.dataset.limitlessEntryState = 'suppressed';
@@ -199,54 +308,53 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
-function renderLauncher(root, config, controller) {
+function renderLauncher(root, config, controller, { conversationId = VENDOR_ELEMENT_ID } = {}) {
   const pageType = config.pageContext.getPageType(window.location.pathname);
   const prompt = config.pageContext.getPromptForPage(pageType, config);
-  const quickReplies = config.copy.quickReplies
-    .map((reply) => `<li>${escapeHtml(reply)}</li>`)
-    .join('');
   root.innerHTML = `
     <section class="voice-widget-shell" data-state="closed" aria-label="${escapeHtml(config.brandName)} voice receptionist">
       <div class="voice-widget-prompt" hidden>
         <button class="voice-widget-prompt__dismiss" type="button" aria-label="Dismiss ${escapeHtml(config.agentName)} prompt">×</button>
         <p>${escapeHtml(prompt)}</p>
       </div>
-      <button class="voice-widget-launcher" type="button" aria-expanded="false" aria-controls="voice-widget-status">
+      <button class="voice-widget-launcher" type="button" aria-expanded="false" aria-controls="${escapeHtml(conversationId)}">
         <span class="voice-widget-launcher__avatar" aria-hidden="true">${escapeHtml(config.agentName.slice(0, 1))}</span>
         <span class="voice-widget-launcher__copy">
           <strong>${escapeHtml(config.copy.launcherLabel)}</strong>
           <small>${escapeHtml(config.agentName)} · ${escapeHtml(config.roleLabel)}</small>
         </span>
       </button>
-      <div class="voice-widget-card" id="voice-widget-status" hidden>
-        <p class="voice-widget-card__brand">${escapeHtml(config.brandName)}</p>
-        <p class="voice-widget-card__prompt">${escapeHtml(prompt)}</p>
-        <ul class="voice-widget-card__chips" aria-label="${escapeHtml(config.copy.quickReplyIntro)}">
-          ${quickReplies}
-        </ul>
-        <p class="voice-widget-card__boundary">${escapeHtml(config.copy.boundary)}</p>
-        <p class="voice-widget-card__voice">${escapeHtml(config.copy.voiceDisclosure)}</p>
-        <p class="voice-widget-card__open" hidden>Voice conversation is open.</p>
-        <button class="voice-widget-card__collapse" type="button">Collapse launcher</button>
-      </div>
+      <p class="voice-widget-status" id="voice-widget-status" role="status" aria-live="polite"></p>
     </section>
   `;
 
   const shell = root.querySelector('.voice-widget-shell');
   const launcher = root.querySelector('.voice-widget-launcher');
-  const card = root.querySelector('.voice-widget-card');
-  const openNote = root.querySelector('.voice-widget-card__open');
+  const statusEl = root.querySelector('.voice-widget-status');
   const promptEl = root.querySelector('.voice-widget-prompt');
   const dismissButton = root.querySelector('.voice-widget-prompt__dismiss');
-  const collapseButton = root.querySelector('.voice-widget-card__collapse');
+
+  function statusMessage(state) {
+    if (state.panelOpen) return '';
+    if (state.pendingOpen) return config.copy.connecting;
+    if (state.openFailed) return config.copy.unavailable;
+    return config.copy.voiceDisclosure;
+  }
 
   function applyState(state) {
-    shell.dataset.state = state.panelOpen ? 'open' : state.promptVisible ? 'prompt' : 'closed';
-    launcher.setAttribute('aria-expanded', String(state.panelOpen));
     // Once opened, the vendor widget owns the conversation surface. Keep the
     // first-party shell from covering the ElevenLabs panel.
-    card.hidden = true;
-    openNote.hidden = true;
+    shell.dataset.state = state.panelOpen
+      ? 'open'
+      : state.pendingOpen
+        ? 'pending'
+        : state.promptVisible
+          ? 'prompt'
+          : 'closed';
+    launcher.setAttribute('aria-expanded', String(state.panelOpen));
+    launcher.disabled = state.pendingOpen;
+    launcher.setAttribute('aria-busy', String(state.pendingOpen));
+    statusEl.textContent = statusMessage(state);
     promptEl.hidden = !state.promptVisible || state.panelOpen;
   }
 
@@ -257,7 +365,6 @@ function renderLauncher(root, config, controller) {
 
   launcher.addEventListener('click', () => runAndApply(() => controller.open('launcher')));
   dismissButton.addEventListener('click', () => runAndApply(() => controller.dismiss('prompt')));
-  collapseButton.addEventListener('click', () => runAndApply(() => controller.collapse('card')));
   applyState(controller.getState());
   return applyState;
 }
@@ -268,19 +375,26 @@ export function mountVoiceWidgetLauncher({
 } = {}) {
   if (!root) throw new Error('voice-widget-launcher-root not found');
   const vendorElement = ensureVendorElement(config);
+  const vendor = createDomVendorElement(vendorElement);
   ensureVendorScript(config);
+  const pageType = config.pageContext.getPageType(window.location.pathname);
+  let applyState = () => {};
   const controller = createVoiceWidgetController({
     config,
     storage: window.localStorage,
     sessionStorage: window.sessionStorage,
-    vendorElement: createDomVendorElement(vendorElement),
+    vendorElement: vendor,
+    pageType,
+    onChange: (state) => applyState(state),
   });
-  const applyState = renderLauncher(root, config, controller);
+  applyState = renderLauncher(root, config, controller, { conversationId: vendorElement.id });
+  vendor.onCollapsed(() => controller.syncCollapsed('vendor'));
   const api = {
     open: controller.open,
     collapse: controller.collapse,
     dismiss: controller.dismiss,
     showPrompt: controller.showPrompt,
+    hidePrompt: controller.hidePrompt,
     shouldShowPrompt: controller.shouldShowPrompt,
     resetTimingState: controller.resetTimingState,
     getState: controller.getState,
@@ -288,7 +402,7 @@ export function mountVoiceWidgetLauncher({
   };
 
   const update = () => applyState(controller.getState());
-  for (const method of ['open', 'collapse', 'dismiss', 'showPrompt', 'resetTimingState']) {
+  for (const method of ['open', 'collapse', 'dismiss', 'showPrompt', 'hidePrompt', 'resetTimingState']) {
     const current = api[method];
     api[method] = (...args) => {
       const result = current(...args);
@@ -300,12 +414,10 @@ export function mountVoiceWidgetLauncher({
   const dwellMs = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
     ? config.behavior.mobilePromptDwellMs
     : config.behavior.promptDwellMs;
-  const pageType = config.pageContext.getPageType(window.location.pathname);
   window.setTimeout(() => {
-    if (api.shouldShowPrompt({ pageType, intent: true })) {
-      api.showPrompt('dwell');
+    if (api.showPrompt('dwell', { pageType, intent: true })) {
       window.setTimeout(() => {
-        if (api.getState().promptVisible) api.collapse('prompt-timeout');
+        api.hidePrompt('prompt-timeout');
       }, config.behavior.promptVisibleMs);
     }
   }, dwellMs);

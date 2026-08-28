@@ -168,9 +168,13 @@ elevenlabs-convai[data-managed-by="limitless-voice-widget-launcher"][data-limitl
 }
 
 .voice-widget-launcher,
-.voice-widget-card,
+.voice-widget-status,
 .voice-widget-prompt {
   box-shadow: var(--shadow);
+}
+
+.voice-widget-shell[data-state="open"] {
+  display: none;
 }
 
 .voice-widget-launcher {
@@ -187,8 +191,7 @@ elevenlabs-convai[data-managed-by="limitless-voice-widget-launcher"][data-limitl
 }
 
 .voice-widget-launcher:focus-visible,
-.voice-widget-prompt__dismiss:focus-visible,
-.voice-widget-card__collapse:focus-visible {
+.voice-widget-prompt__dismiss:focus-visible {
   outline: 3px solid rgba(84, 194, 178, 0.55);
   outline-offset: 3px;
 }
@@ -219,26 +222,18 @@ elevenlabs-convai[data-managed-by="limitless-voice-widget-launcher"][data-limitl
   font-size: 0.75rem;
 }
 
-.voice-widget-prompt,
-.voice-widget-card {
+.voice-widget-prompt {
+  position: relative;
   width: min(22rem, calc(100vw - 2rem));
   border: 1px solid var(--line);
   border-radius: 1rem;
+  padding: 0.95rem 2.5rem 0.95rem 1rem;
   background: rgba(8, 18, 22, 0.96);
   backdrop-filter: blur(10px);
 }
 
-.voice-widget-prompt {
-  position: relative;
-  padding: 0.95rem 2.5rem 0.95rem 1rem;
-}
-
-.voice-widget-prompt p,
-.voice-widget-card p {
-  margin: 0;
-}
-
 .voice-widget-prompt p {
+  margin: 0;
   color: var(--ink);
   line-height: 1.4;
 }
@@ -257,65 +252,22 @@ elevenlabs-convai[data-managed-by="limitless-voice-widget-launcher"][data-limitl
   font-size: 1.25rem;
 }
 
-.voice-widget-card {
-  padding: 1rem;
-  text-align: left;
-}
-
-.voice-widget-card__brand {
-  color: var(--rose);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.voice-widget-card__prompt {
-  margin-top: 0.45rem !important;
-  font-size: 0.98rem;
-  line-height: 1.45;
-}
-
-.voice-widget-card__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  margin: 0.8rem 0;
-  padding: 0;
-  list-style: none;
-}
-
-.voice-widget-card__chips li {
-  border: 1px solid rgba(84, 194, 178, 0.22);
-  border-radius: 999px;
-  padding: 0.35rem 0.55rem;
-  color: var(--accent-strong);
-  background: rgba(84, 194, 178, 0.08);
-  font-size: 0.78rem;
-}
-
-.voice-widget-card__boundary,
-.voice-widget-card__voice,
-.voice-widget-card__open {
-  margin-top: 0.7rem !important;
+.voice-widget-status {
+  margin: 0;
+  max-width: min(22rem, calc(100vw - 2rem));
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  padding: 0.5rem 0.7rem;
   color: var(--muted);
-  font-size: 0.78rem;
-  line-height: 1.4;
+  background: rgba(8, 18, 22, 0.96);
+  backdrop-filter: blur(10px);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  text-align: right;
 }
 
-.voice-widget-card__open {
-  color: var(--accent-strong);
-  font-weight: 700;
-}
-
-.voice-widget-card__collapse {
-  margin-top: 0.85rem;
-  border: 1px solid rgba(232, 238, 243, 0.18);
-  border-radius: 999px;
-  padding: 0.45rem 0.7rem;
-  color: var(--ink);
-  background: transparent;
-  cursor: pointer;
+.voice-widget-status:empty {
+  display: none;
 }
 
 @media (max-width: 560px) {
@@ -327,6 +279,11 @@ elevenlabs-convai[data-managed-by="limitless-voice-widget-launcher"][data-limitl
   .voice-widget-launcher {
     justify-content: flex-start;
     width: 100%;
+  }
+
+  .voice-widget-status {
+    max-width: none;
+    text-align: left;
   }
 }
 

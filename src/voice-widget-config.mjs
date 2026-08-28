@@ -67,6 +67,8 @@ export function createVoiceWidgetConfig(options) {
     contextPrompts: {},
     boundary: 'For general information only — not medical advice.',
     voiceDisclosure: 'Voice starts only after you choose it and approve microphone access.',
+    connecting: 'Connecting you to the assistant…',
+    unavailable: 'The assistant is still loading. Please try again in a moment.',
     ...(options.copy || {}),
   };
 
@@ -88,8 +90,10 @@ export function createVoiceWidgetConfig(options) {
     suppression: Object.freeze({
       ...defaultSuppression,
       ...(options.suppression || {}),
-      namespace: `${defaultSuppression.namespace}:${options.siteId}`,
-      sessionStorageKey: `${defaultSuppression.sessionStorageKey}:${options.siteId}`,
+      namespace: options.suppression?.namespace ?? `${defaultSuppression.namespace}:${options.siteId}`,
+      sessionStorageKey:
+        options.suppression?.sessionStorageKey ??
+        `${defaultSuppression.sessionStorageKey}:${options.siteId}`,
     }),
     analytics: Object.freeze({
       namespace: `voice_widget.${options.siteId}`,
@@ -143,6 +147,8 @@ export const purpleBasilVoiceWidgetConfig = createVoiceWidgetConfig({
     },
     boundary: 'Mia gives general information — not medical advice. Purple Basil’s licensed team can help with personal recommendations.',
     voiceDisclosure: 'Text is available first. Voice starts only after you choose it and approve microphone access.',
+    connecting: 'Connecting you to Mia…',
+    unavailable: 'Mia is still loading. Please try again in a moment.',
   },
   vendor: {
     elevenLabs: {
