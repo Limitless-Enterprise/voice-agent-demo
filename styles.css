@@ -4,7 +4,10 @@
   --ink: #e8eef3;
   --muted: #9aadb8;
   --accent: #3d9a8b;
+  --accent-strong: #54c2b2;
+  --rose: #d89aa3;
   --line: rgba(232, 238, 243, 0.12);
+  --shadow: 0 18px 60px rgba(0, 0, 0, 0.32);
   --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia,
     serif;
   --font-body: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -131,6 +134,188 @@ h1 {
   font-size: 0.9rem;
   line-height: 1.5;
   color: var(--muted);
+}
+
+elevenlabs-convai[data-managed-by="limitless-voice-widget-launcher"] {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 40;
+}
+
+.voice-widget-shell {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  z-index: 60;
+  display: grid;
+  justify-items: end;
+  gap: 0.75rem;
+  max-width: min(23rem, calc(100vw - 2rem));
+  color: var(--ink);
+}
+
+.voice-widget-launcher,
+.voice-widget-card,
+.voice-widget-prompt {
+  box-shadow: var(--shadow);
+}
+
+.voice-widget-launcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3.5rem;
+  border: 1px solid rgba(84, 194, 178, 0.35);
+  border-radius: 999px;
+  padding: 0.55rem 0.95rem 0.55rem 0.55rem;
+  color: var(--ink);
+  background: rgba(8, 18, 22, 0.94);
+  cursor: pointer;
+}
+
+.voice-widget-launcher:focus-visible,
+.voice-widget-prompt__dismiss:focus-visible,
+.voice-widget-card__collapse:focus-visible {
+  outline: 3px solid rgba(84, 194, 178, 0.55);
+  outline-offset: 3px;
+}
+
+.voice-widget-launcher__avatar {
+  display: grid;
+  place-items: center;
+  width: 2.45rem;
+  height: 2.45rem;
+  border-radius: 50%;
+  color: #082026;
+  background: linear-gradient(135deg, var(--accent-strong), #f0d6ba);
+  font-weight: 800;
+}
+
+.voice-widget-launcher__copy {
+  display: grid;
+  gap: 0.15rem;
+  text-align: left;
+}
+
+.voice-widget-launcher__copy strong {
+  font-size: 0.98rem;
+}
+
+.voice-widget-launcher__copy small {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.voice-widget-prompt,
+.voice-widget-card {
+  width: min(22rem, calc(100vw - 2rem));
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: rgba(8, 18, 22, 0.96);
+  backdrop-filter: blur(10px);
+}
+
+.voice-widget-prompt {
+  position: relative;
+  padding: 0.95rem 2.5rem 0.95rem 1rem;
+}
+
+.voice-widget-prompt p,
+.voice-widget-card p {
+  margin: 0;
+}
+
+.voice-widget-prompt p {
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+.voice-widget-prompt__dismiss {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.55rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 0;
+  border-radius: 50%;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  font-size: 1.25rem;
+}
+
+.voice-widget-card {
+  padding: 1rem;
+  text-align: left;
+}
+
+.voice-widget-card__brand {
+  color: var(--rose);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.voice-widget-card__prompt {
+  margin-top: 0.45rem !important;
+  font-size: 0.98rem;
+  line-height: 1.45;
+}
+
+.voice-widget-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0.8rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.voice-widget-card__chips li {
+  border: 1px solid rgba(84, 194, 178, 0.22);
+  border-radius: 999px;
+  padding: 0.35rem 0.55rem;
+  color: var(--accent-strong);
+  background: rgba(84, 194, 178, 0.08);
+  font-size: 0.78rem;
+}
+
+.voice-widget-card__boundary,
+.voice-widget-card__voice,
+.voice-widget-card__open {
+  margin-top: 0.7rem !important;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.voice-widget-card__open {
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.voice-widget-card__collapse {
+  margin-top: 0.85rem;
+  border: 1px solid rgba(232, 238, 243, 0.18);
+  border-radius: 999px;
+  padding: 0.45rem 0.7rem;
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+}
+
+@media (max-width: 560px) {
+  .voice-widget-shell {
+    left: 1rem;
+    justify-items: stretch;
+  }
+
+  .voice-widget-launcher {
+    justify-content: flex-start;
+    width: 100%;
+  }
 }
 
 @media (prefers-reduced-motion: no-preference) {
