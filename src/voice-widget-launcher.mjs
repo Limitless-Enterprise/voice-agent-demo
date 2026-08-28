@@ -5,7 +5,7 @@ const VENDOR_ELEMENT_ID = 'voice-widget-conversation';
 
 const CONTROL_LABELS = {
   Message: ['Message', 'Chat', 'Text'],
-  Collapse: ['Collapse', 'Minimize', 'Close'],
+  Collapse: ['Minimize', 'Close', 'Dismiss'],
   Dismiss: ['Dismiss'],
 };
 
@@ -30,9 +30,10 @@ function isControl(node, controlName) {
     .join(' ')
     .trim()
     .toLowerCase();
-  return (CONTROL_LABELS[controlName] || [controlName]).some((name) =>
-    label.includes(name.toLowerCase()),
-  );
+  return (CONTROL_LABELS[controlName] || [controlName]).some((name) => {
+    const normalized = name.toLowerCase();
+    return label === normalized || label.startsWith(`${normalized} `);
+  });
 }
 
 function findControl(root, controlName) {
@@ -58,7 +59,6 @@ export function createDomVendorElement(element, { readyTimeoutMs = 8000 } = {}) 
     },
     whenReady() {
       if (!element) return Promise.reject(new Error('vendor element is missing'));
-      if (element.shadowRoot) return Promise.resolve(element);
       const defined = globalThis.customElements?.whenDefined
         ? globalThis.customElements.whenDefined(VENDOR_TAG)
         : Promise.resolve();
@@ -67,7 +67,8 @@ export function createDomVendorElement(element, { readyTimeoutMs = 8000 } = {}) 
           new Promise((resolve, reject) => {
             const deadline = Date.now() + readyTimeoutMs;
             const check = () => {
-              if (element.shadowRoot) {
+              const root = element.shadowRoot || element;
+              if (findControl(root, 'Message')) {
                 resolve(element);
                 return;
               }
@@ -358,13 +359,8 @@ function renderLauncher(root, config, controller, { conversationId = VENDOR_ELEM
     promptEl.hidden = !state.promptVisible || state.panelOpen;
   }
 
-  function runAndApply(action) {
-    action();
-    applyState(controller.getState());
-  }
-
-  launcher.addEventListener('click', () => runAndApply(() => controller.open('launcher')));
-  dismissButton.addEventListener('click', () => runAndApply(() => controller.dismiss('prompt')));
+  launcher.addEventListener('click', () => controller.open('launcher'));
+  dismissButton.addEventListener('click', () => controller.dismiss('prompt'));
   applyState(controller.getState());
   return applyState;
 }
@@ -400,16 +396,6 @@ export function mountVoiceWidgetLauncher({
     getState: controller.getState,
     config,
   };
-
-  const update = () => applyState(controller.getState());
-  for (const method of ['open', 'collapse', 'dismiss', 'showPrompt', 'hidePrompt', 'resetTimingState']) {
-    const current = api[method];
-    api[method] = (...args) => {
-      const result = current(...args);
-      update();
-      return result;
-    };
-  }
 
   const dwellMs = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
     ? config.behavior.mobilePromptDwellMs
