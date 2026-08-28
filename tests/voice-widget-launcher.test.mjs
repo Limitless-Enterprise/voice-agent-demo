@@ -15,11 +15,15 @@ function memoryStorage() {
 
 test('controller starts closed and does not auto-open the vendor conversation', () => {
   const clicks = [];
+  const suppressionStates = [];
   const controller = createVoiceWidgetController({
     config: purpleBasilVoiceWidgetConfig,
     storage: memoryStorage(),
     now: () => 1000,
     vendorElement: {
+      setCollapsedEntrySuppressed(suppressed) {
+        suppressionStates.push(suppressed);
+      },
       clickControl(name) {
         clicks.push(name);
         return true;
@@ -30,15 +34,20 @@ test('controller starts closed and does not auto-open the vendor conversation', 
   assert.equal(controller.getState().panelOpen, false);
   assert.equal(controller.getState().dismissed, false);
   assert.deepEqual(clicks, []);
+  assert.deepEqual(suppressionStates, []);
 });
 
-test('open clicks the vendor message control only after an explicit launcher action', () => {
+test('open reveals and clicks the vendor message control only after an explicit launcher action', () => {
   const clicks = [];
+  const suppressionStates = [];
   const controller = createVoiceWidgetController({
     config: purpleBasilVoiceWidgetConfig,
     storage: memoryStorage(),
     now: () => 1000,
     vendorElement: {
+      setCollapsedEntrySuppressed(suppressed) {
+        suppressionStates.push(suppressed);
+      },
       clickControl(name) {
         clicks.push(name);
         return name === 'Message';
@@ -49,6 +58,28 @@ test('open clicks the vendor message control only after an explicit launcher act
   assert.equal(controller.open('launcher'), true);
   assert.equal(controller.getState().panelOpen, true);
   assert.deepEqual(clicks, ['Message']);
+  assert.deepEqual(suppressionStates, [false]);
+});
+
+test('failed explicit open re-suppresses the vendor collapsed entry point', () => {
+  const suppressionStates = [];
+  const controller = createVoiceWidgetController({
+    config: purpleBasilVoiceWidgetConfig,
+    storage: memoryStorage(),
+    now: () => 1000,
+    vendorElement: {
+      setCollapsedEntrySuppressed(suppressed) {
+        suppressionStates.push(suppressed);
+      },
+      clickControl() {
+        return false;
+      },
+    },
+  });
+
+  assert.equal(controller.open('launcher'), false);
+  assert.equal(controller.getState().panelOpen, false);
+  assert.deepEqual(suppressionStates, [false, true]);
 });
 
 test('dismiss persists prompt suppression with a safe expiry but keeps manual launcher access available', () => {

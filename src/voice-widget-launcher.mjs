@@ -30,7 +30,13 @@ function findButtonByNames(root, names) {
 }
 
 export function createDomVendorElement(element) {
+  const setCollapsedEntrySuppressed = (suppressed) => {
+    if (!element) return;
+    element.dataset.limitlessEntryState = suppressed ? 'suppressed' : 'open';
+  };
+
   return {
+    setCollapsedEntrySuppressed,
     clickControl(controlName) {
       if (!element) return false;
       const root = element.shadowRoot || element;
@@ -106,7 +112,9 @@ export function createVoiceWidgetController({
   }
 
   function open(source = 'launcher') {
+    vendorElement?.setCollapsedEntrySuppressed?.(false);
     const clicked = vendorElement?.clickControl?.('Message') ?? false;
+    if (!clicked) vendorElement?.setCollapsedEntrySuppressed?.(true);
     state.panelOpen = Boolean(clicked);
     state.promptVisible = false;
     state.openSource = source;
@@ -117,6 +125,7 @@ export function createVoiceWidgetController({
 
   function collapse(source = 'launcher') {
     const clicked = vendorElement?.clickControl?.('Collapse') ?? false;
+    vendorElement?.setCollapsedEntrySuppressed?.(true);
     state.panelOpen = false;
     state.promptVisible = false;
     state.lastAction = clicked ? `collapse:${source}` : `collapse-local:${source}`;
@@ -164,6 +173,7 @@ function ensureVendorElement(config) {
   }
   element.setAttribute('agent-id', resolveElevenLabsAgentId(config));
   element.setAttribute('data-managed-by', 'limitless-voice-widget-launcher');
+  element.dataset.limitlessEntryState = 'suppressed';
   return element;
 }
 

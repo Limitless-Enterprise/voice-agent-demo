@@ -143,6 +143,18 @@ elevenlabs-convai[data-managed-by="limitless-voice-widget-launcher"] {
   z-index: 40;
 }
 
+elevenlabs-convai[data-managed-by="limitless-voice-widget-launcher"][data-limitless-entry-state="suppressed"] {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+elevenlabs-convai[data-managed-by="limitless-voice-widget-launcher"][data-limitless-entry-state="open"] {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .voice-widget-shell {
   position: fixed;
   right: max(1rem, env(safe-area-inset-right));
