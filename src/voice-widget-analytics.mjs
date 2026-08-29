@@ -171,10 +171,12 @@ export function createVoiceWidgetAnalytics({
   const deliver =
     typeof sink === 'function'
       ? sink
-      : (payload) => {
-          const target = (globalThis[dataLayerName] ||= []);
-          if (Array.isArray(target)) target.push(payload);
-        };
+      : config.analytics.emitToDataLayer === false
+        ? () => {}
+        : (payload) => {
+            const target = (globalThis[dataLayerName] ||= []);
+            if (Array.isArray(target)) target.push(payload);
+          };
 
   function persistEmitted() {
     setStoredJson(sessionStore, emittedKey, [...emitted].slice(-100));
@@ -185,15 +187,16 @@ export function createVoiceWidgetAnalytics({
     const dedupe = dedupeKey ? `${eventName}:${dedupeKey}` : null;
     if (dedupe && emitted.has(dedupe)) return null;
 
+    const safeProperties = sanitizeProperties(properties);
     const payload = {
       event: eventName,
       site_id: config.siteId,
       environment: config.environment,
       locale: config.locale,
       timezone: config.timezone,
-      route_category: properties.route_category,
-      device_class: properties.device_class || getDeviceClass(userAgent, viewportWidth),
-      trigger_type: properties.trigger_type || properties.source,
+      route_category: safeProperties.route_category,
+      device_class: safeProperties.device_class || getDeviceClass(userAgent, viewportWidth),
+      trigger_type: safeProperties.trigger_type || safeProperties.source,
       session_id: session.session_id,
       session_storage: session.session_storage,
       config_version: config.version,
@@ -212,11 +215,14 @@ export function createVoiceWidgetAnalytics({
       modality_variant: assignment.modality_variant,
       quick_reply_variant: assignment.quick_reply_variant,
       occurred_at: now(),
-      ...sanitizeProperties(properties),
+      ...safeProperties,
     };
     if (dedupe) {
       emitted.add(dedupe);
       persistEmitted();
+    }
+    for (const [key, value] of Object.entries(payload)) {
+      if (value === undefined) delete payload[key];
     }
     deliver(payload);
     return Object.freeze(payload);

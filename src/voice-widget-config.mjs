@@ -120,7 +120,6 @@ export function createVoiceWidgetConfig(options) {
         closeRateDenominator: 'voice_widget_prompt_impression',
         immediateCloseWindowMs: 10_000,
       }),
-      experiments: defaultExperiments,
       ...(options.analytics || {}),
       experiments: {
         ...defaultExperiments,

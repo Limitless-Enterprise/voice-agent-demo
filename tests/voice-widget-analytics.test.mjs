@@ -122,6 +122,52 @@ test('analytics emits to dataLayer with only approved operational metadata and d
   assert.equal('arbitrary_free_text' in first, false);
 });
 
+test('analytics sanitizes derived trigger type and honours disabled dataLayer delivery', () => {
+  const storage = memoryStorage();
+  const sessionStorage = memoryStorage();
+  const sent = [];
+  const analytics = createVoiceWidgetAnalytics({
+    config: purpleBasilVoiceWidgetConfig,
+    storage,
+    sessionStorage,
+    now: () => 12345,
+    random: () => 0,
+    sink: (payload) => sent.push(payload),
+  });
+
+  const payload = analytics.emit('voice_widget_open', {
+    route_category: 'home',
+    source: 'manual-click patient@example.com',
+    trigger_type: 'ref:+1 555 123 4567',
+  });
+
+  assert.equal('source' in payload, false);
+  assert.equal('trigger_type' in payload, false);
+  assert.equal(sent.length, 1);
+
+  const previousDataLayer = globalThis.dataLayer;
+  try {
+    globalThis.dataLayer = [];
+    const config = createVoiceWidgetConfig({
+      siteId: 'example-spa',
+      agentName: 'Ava',
+      brandName: 'Example Spa',
+      roleLabel: 'AI concierge',
+      launcherLabel: 'Ask Ava',
+      prompt: 'Questions before booking? Ask Ava.',
+      capabilities: ['services'],
+      analytics: { emitToDataLayer: false },
+      vendor: { elevenLabs: { agentIds: { production: 'agent_prod' } } },
+    });
+    const disabled = createVoiceWidgetAnalytics({ config, storage: memoryStorage(), sessionStorage: memoryStorage() });
+    disabled.emit('voice_widget_open', { source: 'launcher' });
+    assert.deepEqual(globalThis.dataLayer, []);
+  } finally {
+    if (previousDataLayer === undefined) delete globalThis.dataLayer;
+    else globalThis.dataLayer = previousDataLayer;
+  }
+});
+
 test('vendor tool-call mapping records only safe funnel outcomes, not conversation content', () => {
   assert.deepEqual(mapVendorToolCallToWidgetEvent({ toolName: 'create_booking', email: 'patient@example.com' }), [
     'voice_widget_book_now_click',

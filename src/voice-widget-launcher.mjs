@@ -178,7 +178,7 @@ export function createVoiceWidgetController({
     return true;
   }
 
-  function hidePrompt(reason = 'timeout') {
+  function hidePrompt(reason = 'prompt-timeout') {
     if (!state.promptVisible) return false;
     state.promptVisible = false;
     state.lastAction = `prompt-hidden:${reason}`;
@@ -263,13 +263,14 @@ export function createVoiceWidgetController({
 
   function collapse(source = 'launcher') {
     const clicked = vendorElement?.clickControl?.('Collapse') ?? false;
+    const wasOpen = state.panelOpen;
     vendorElement?.setCollapsedEntrySuppressed?.(true);
     state.panelOpen = false;
     state.pendingOpen = false;
     state.openFailed = false;
     state.promptVisible = false;
     state.lastAction = clicked ? `collapse:${source}` : `collapse-local:${source}`;
-    emitAnalytics('voice_widget_minimize', { source });
+    if (wasOpen) emitAnalytics('voice_widget_minimize', { source });
     emit();
     return Boolean(clicked);
   }
@@ -497,7 +498,10 @@ export function mountVoiceWidgetLauncher({
       viewportWidth: window.innerWidth,
       userAgent: navigator.userAgent,
     });
-  analyticsClient.emit('voice_widget_eligible', { route_category: pageType, suppression_reason: 'eligible' }, { dedupeKey: `eligible:${pageType}` });
+  const eligibleForLauncher = pageType !== 'excluded';
+  if (eligibleForLauncher) {
+    analyticsClient.emit('voice_widget_eligible', { route_category: pageType, suppression_reason: 'eligible' }, { dedupeKey: `eligible:${pageType}` });
+  }
   let applyState = () => {};
   const controller = createVoiceWidgetController({
     config,
@@ -509,7 +513,9 @@ export function mountVoiceWidgetLauncher({
     onChange: (state) => applyState(state),
   });
   applyState = renderLauncher(root, config, controller, { conversationId: vendorElement.id });
-  analyticsClient.emit('voice_widget_launcher_impression', { route_category: pageType, source: 'launcher' }, { dedupeKey: `launcher:${pageType}` });
+  if (eligibleForLauncher) {
+    analyticsClient.emit('voice_widget_launcher_impression', { route_category: pageType, source: 'launcher' }, { dedupeKey: `launcher:${pageType}` });
+  }
   vendor.onCollapsed(() => controller.syncCollapsed('vendor'));
   bindVendorInstrumentation(vendorElement, controller);
   vendor.whenReady().then(
