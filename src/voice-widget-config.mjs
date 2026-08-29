@@ -116,8 +116,8 @@ export function createVoiceWidgetConfig(options) {
       emitToDataLayer: true,
       conversationJoinPolicy: 'pseudonymous-approved-only',
       annoyanceGuardrails: Object.freeze({
-        dismissRateDenominator: 'voice_widget_impression',
-        closeRateDenominator: 'voice_widget_open',
+        dismissRateDenominator: 'voice_widget_launcher_impression',
+        closeRateDenominator: 'voice_widget_prompt_impression',
         immediateCloseWindowMs: 10_000,
       }),
       experiments: defaultExperiments,

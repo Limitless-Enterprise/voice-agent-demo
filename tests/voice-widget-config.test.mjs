@@ -41,11 +41,11 @@ test('Purple Basil config encodes Mia launcher copy, capabilities, environment v
   ]);
   assert.equal(
     purpleBasilVoiceWidgetConfig.analytics.annoyanceGuardrails.dismissRateDenominator,
-    'voice_widget_impression',
+    'voice_widget_launcher_impression',
   );
   assert.equal(
     purpleBasilVoiceWidgetConfig.analytics.annoyanceGuardrails.closeRateDenominator,
-    'voice_widget_open',
+    'voice_widget_prompt_impression',
   );
   assert.ok(purpleBasilVoiceWidgetConfig.suppression.promptDismissTtlMs > 0);
 });

@@ -170,7 +170,7 @@ export function createVoiceWidgetController({
     state.lastAction = `prompt:${reason}`;
     setSessionPromptCount(getSessionPromptCount() + 1);
     emitAnalytics(
-      'voice_widget_impression',
+      'voice_widget_prompt_impression',
       { source: 'teaser', route_category: context?.pageType || currentPageType },
       { dedupeKey: `teaser:${context?.pageType || currentPageType}` },
     );
@@ -183,7 +183,7 @@ export function createVoiceWidgetController({
     state.promptVisible = false;
     state.lastAction = `prompt-hidden:${reason}`;
     if (reason === 'prompt-timeout') {
-      emitAnalytics('voice_widget_teaser_timeout', { source: 'teaser' });
+      emitAnalytics('voice_widget_prompt_close', { source: 'teaser', code: 'prompt-timeout' });
     }
     emit();
     return true;
@@ -217,8 +217,9 @@ export function createVoiceWidgetController({
       state.promptVisible = false;
       state.openSource = source;
       state.lastAction = `open:${source}`;
-      emitAnalytics('voice_widget_open', { source });
-      emitAnalytics('voice_widget_mode_start', { source, mode: 'text' });
+      const mode = source === 'voice' ? 'voice' : 'text';
+      emitAnalytics('voice_widget_open', { source, mode });
+      emitAnalytics(mode === 'voice' ? 'voice_widget_start_call' : 'voice_widget_start_message', { source, mode });
       emit();
       return true;
     }
@@ -279,6 +280,7 @@ export function createVoiceWidgetController({
     state.promptVisible = false;
     state.dismissed = true;
     state.lastAction = `dismiss:${source}`;
+    if (source === 'prompt') emitAnalytics('voice_widget_prompt_close', { source, code: 'dismissed' });
     emitAnalytics('voice_widget_dismiss', { source });
     emit();
     return true;
@@ -287,7 +289,10 @@ export function createVoiceWidgetController({
   function recordFirstUserTurn({ mode = state.openSource === 'voice' ? 'voice' : 'text' } = {}) {
     if (state.firstUserTurnTracked) return false;
     state.firstUserTurnTracked = true;
-    emitAnalytics('voice_widget_first_user_turn', { mode }, { dedupeKey: 'first-user-turn' });
+    emitAnalytics('voice_widget_first_user_message', { mode }, { dedupeKey: 'first-user-message' });
+    if (mode === 'voice') {
+      emitAnalytics('voice_widget_first_voice_turn', { mode }, { dedupeKey: 'first-voice-turn' });
+    }
     emit();
     return true;
   }
@@ -301,12 +306,12 @@ export function createVoiceWidgetController({
   }
 
   function recordContactCapture({ contactType = 'unknown' } = {}) {
-    emitAnalytics('voice_widget_contact_capture', { contact_type: contactType });
+    emitAnalytics('voice_widget_handoff_or_lead', { contact_type: contactType, handoff_state: 'lead_captured' });
     return true;
   }
 
   function recordHandoff({ state: handoffState = 'selected', destinationType = 'staff' } = {}) {
-    emitAnalytics('voice_widget_handoff', {
+    emitAnalytics('voice_widget_handoff_or_lead', {
       handoff_state: handoffState,
       handoff_destination_type: destinationType,
     });
@@ -314,7 +319,7 @@ export function createVoiceWidgetController({
   }
 
   function recordBookingClick({ destination = 'booking_system', placement = 'assistant' } = {}) {
-    emitAnalytics('voice_widget_booking_click', {
+    emitAnalytics('voice_widget_book_now_click', {
       booking_destination: destination,
       booking_placement: placement,
     });
@@ -454,8 +459,8 @@ function bindVendorInstrumentation(element, controller) {
     const mapped = mapVendorToolCallToWidgetEvent(event.detail || {});
     if (!mapped) return;
     const [eventName, properties] = mapped;
-    if (eventName === 'voice_widget_booking_click') controller.recordBookingClick(properties);
-    if (eventName === 'voice_widget_handoff') controller.recordHandoff(properties);
+    if (eventName === 'voice_widget_book_now_click') controller.recordBookingClick(properties);
+    if (eventName === 'voice_widget_handoff_or_lead') controller.recordHandoff(properties);
   };
   const onUserTurn = (event) => controller.recordFirstUserTurn({ mode: event.detail?.mode });
   const onAgentResponse = (event) => controller.recordFirstAgentResponse({ mode: event.detail?.mode, code: 'ok' });
@@ -504,7 +509,7 @@ export function mountVoiceWidgetLauncher({
     onChange: (state) => applyState(state),
   });
   applyState = renderLauncher(root, config, controller, { conversationId: vendorElement.id });
-  analyticsClient.emit('voice_widget_impression', { route_category: pageType, source: 'launcher' }, { dedupeKey: `launcher:${pageType}` });
+  analyticsClient.emit('voice_widget_launcher_impression', { route_category: pageType, source: 'launcher' }, { dedupeKey: `launcher:${pageType}` });
   vendor.onCollapsed(() => controller.syncCollapsed('vendor'));
   bindVendorInstrumentation(vendorElement, controller);
   vendor.whenReady().then(

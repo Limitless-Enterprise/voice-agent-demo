@@ -3,17 +3,19 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const VOICE_WIDGET_EVENTS = Object.freeze([
   'voice_widget_eligible',
   'voice_widget_ready',
-  'voice_widget_impression',
+  'voice_widget_launcher_impression',
+  'voice_widget_prompt_impression',
+  'voice_widget_prompt_close',
   'voice_widget_open',
-  'voice_widget_mode_start',
-  'voice_widget_first_user_turn',
+  'voice_widget_start_call',
+  'voice_widget_start_message',
+  'voice_widget_first_user_message',
+  'voice_widget_first_voice_turn',
   'voice_widget_first_agent_response',
-  'voice_widget_contact_capture',
-  'voice_widget_handoff',
-  'voice_widget_booking_click',
+  'voice_widget_handoff_or_lead',
+  'voice_widget_book_now_click',
   'voice_widget_minimize',
   'voice_widget_dismiss',
-  'voice_widget_teaser_timeout',
   'voice_widget_error',
 ]);
 
@@ -45,6 +47,7 @@ const CONTROLLED_STRING_KEYS = new Set([
   'modality_variant',
   'quick_reply_variant',
   'source',
+  'trigger_type',
   'mode',
   'stage',
   'code',
@@ -190,6 +193,7 @@ export function createVoiceWidgetAnalytics({
       timezone: config.timezone,
       route_category: properties.route_category,
       device_class: properties.device_class || getDeviceClass(userAgent, viewportWidth),
+      trigger_type: properties.trigger_type || properties.source,
       session_id: session.session_id,
       session_storage: session.session_storage,
       config_version: config.version,
@@ -225,10 +229,10 @@ export function mapVendorToolCallToWidgetEvent(detail = {}) {
   const toolName = String(detail.toolName || detail.name || detail.clientToolName || '').toLowerCase();
   if (!toolName) return null;
   if (/book|available_slot|appointment|vagaro/.test(toolName)) {
-    return ['voice_widget_booking_click', { destination: 'booking_system', placement: 'assistant_tool' }];
+    return ['voice_widget_book_now_click', { destination: 'booking_system', placement: 'assistant_tool' }];
   }
   if (/human|handoff|review|contact/.test(toolName)) {
-    return ['voice_widget_handoff', { state: 'selected', destinationType: 'staff' }];
+    return ['voice_widget_handoff_or_lead', { state: 'selected', destinationType: 'staff' }];
   }
   return null;
 }

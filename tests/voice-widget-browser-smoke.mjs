@@ -80,10 +80,10 @@ test('first-party launcher opens vendor widget only after click and default auto
     assert.equal(vendorStateBefore, null);
     const eventsBeforeOpen = await page.evaluate(() => window.dataLayer.map((payload) => payload.event));
     assert.ok(eventsBeforeOpen.includes('voice_widget_eligible'));
-    assert.ok(eventsBeforeOpen.includes('voice_widget_impression'));
+    assert.ok(eventsBeforeOpen.includes('voice_widget_launcher_impression'));
     assert.ok(eventsBeforeOpen.includes('voice_widget_ready'));
     assert.equal(eventsBeforeOpen.includes('voice_widget_open'), false);
-    assert.equal(eventsBeforeOpen.includes('voice_widget_first_user_turn'), false);
+    assert.equal(eventsBeforeOpen.includes('voice_widget_first_user_message'), false);
     assert.equal(await page.getByRole('button', { name: 'Ask Mia' }).getAttribute('aria-expanded'), 'false');
     assert.equal(await page.evaluate(() => window.voiceWidget.getState().panelOpen), false);
 
@@ -94,11 +94,11 @@ test('first-party launcher opens vendor widget only after click and default auto
     assert.equal(await page.locator('elevenlabs-convai').getAttribute('data-limitless-entry-state'), 'open');
     const events = await page.evaluate(() => window.dataLayer.map((payload) => payload.event));
     assert.ok(events.includes('voice_widget_eligible'));
-    assert.ok(events.includes('voice_widget_impression'));
+    assert.ok(events.includes('voice_widget_launcher_impression'));
     assert.ok(events.includes('voice_widget_ready'));
     assert.ok(events.includes('voice_widget_open'));
-    assert.ok(events.includes('voice_widget_mode_start'));
-    assert.ok(events.includes('voice_widget_first_user_turn'));
+    assert.ok(events.includes('voice_widget_start_message'));
+    assert.ok(events.includes('voice_widget_first_user_message'));
     assert.ok(events.includes('voice_widget_first_agent_response'));
   } finally {
     await browser.close();

@@ -22,17 +22,19 @@ test('analytics contract includes the required LIM-426 funnel events', () => {
   assert.deepEqual(VOICE_WIDGET_EVENTS, [
     'voice_widget_eligible',
     'voice_widget_ready',
-    'voice_widget_impression',
+    'voice_widget_launcher_impression',
+    'voice_widget_prompt_impression',
+    'voice_widget_prompt_close',
     'voice_widget_open',
-    'voice_widget_mode_start',
-    'voice_widget_first_user_turn',
+    'voice_widget_start_call',
+    'voice_widget_start_message',
+    'voice_widget_first_user_message',
+    'voice_widget_first_voice_turn',
     'voice_widget_first_agent_response',
-    'voice_widget_contact_capture',
-    'voice_widget_handoff',
-    'voice_widget_booking_click',
+    'voice_widget_handoff_or_lead',
+    'voice_widget_book_now_click',
     'voice_widget_minimize',
     'voice_widget_dismiss',
-    'voice_widget_teaser_timeout',
     'voice_widget_error',
   ]);
 });
@@ -110,6 +112,7 @@ test('analytics emits to dataLayer with only approved operational metadata and d
   assert.equal(first.site_id, 'purple-basil-medspa');
   assert.equal(first.route_category, 'home');
   assert.equal(first.source, 'launcher');
+  assert.equal(first.trigger_type, 'launcher');
   assert.equal(first.device_class, 'desktop');
   assert.equal(first.experiment_id, 'purple-basil-voice-widget-funnel-v1');
   assert.ok(first.session_id.startsWith('vw_session_'));
@@ -121,11 +124,11 @@ test('analytics emits to dataLayer with only approved operational metadata and d
 
 test('vendor tool-call mapping records only safe funnel outcomes, not conversation content', () => {
   assert.deepEqual(mapVendorToolCallToWidgetEvent({ toolName: 'create_booking', email: 'patient@example.com' }), [
-    'voice_widget_booking_click',
+    'voice_widget_book_now_click',
     { destination: 'booking_system', placement: 'assistant_tool' },
   ]);
   assert.deepEqual(mapVendorToolCallToWidgetEvent({ name: 'request_human_review', transcript: 'secret' }), [
-    'voice_widget_handoff',
+    'voice_widget_handoff_or_lead',
     { state: 'selected', destinationType: 'staff' },
   ]);
   assert.equal(mapVendorToolCallToWidgetEvent({ name: 'lookup_hours' }), null);
