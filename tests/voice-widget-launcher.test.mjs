@@ -263,3 +263,60 @@ test('showPrompt honours the caller page context and the controller page type in
   assert.equal(homeController.showPrompt('manual', { pageType: 'home', intent: false }), false);
   assert.equal(homeController.showPrompt('manual', { pageType: 'home', intent: true }), true);
 });
+
+test('controller emits exact LIM-426 prompt close, text start, voice start, and voice turn event names', () => {
+  const events = [];
+  const analytics = {
+    emit(eventName, properties) {
+      events.push({ eventName, properties });
+    },
+  };
+  const controller = createVoiceWidgetController({
+    config: purpleBasilVoiceWidgetConfig,
+    storage: memoryStorage(),
+    sessionStorage: memoryStorage(),
+    now: () => 1000,
+    analytics,
+    vendorElement: {
+      setCollapsedEntrySuppressed() {},
+      clickControl: () => true,
+    },
+  });
+
+  assert.equal(controller.showPrompt('dwell'), true);
+  assert.equal(controller.hidePrompt('prompt-timeout'), true);
+  assert.equal(controller.open('launcher'), true);
+  assert.equal(controller.recordFirstUserTurn({ mode: 'voice' }), true);
+
+  assert.deepEqual(events.map((event) => event.eventName), [
+    'voice_widget_prompt_impression',
+    'voice_widget_prompt_close',
+    'voice_widget_open',
+    'voice_widget_start_message',
+    'voice_widget_first_user_message',
+    'voice_widget_first_voice_turn',
+  ]);
+  assert.equal(events[0].properties.source, 'teaser');
+  assert.equal(events[1].properties.code, 'prompt-timeout');
+  assert.equal(events[3].properties.mode, 'text');
+});
+
+test('controller emits voice_widget_start_call for explicit voice starts', () => {
+  const events = [];
+  const controller = createVoiceWidgetController({
+    config: purpleBasilVoiceWidgetConfig,
+    storage: memoryStorage(),
+    analytics: { emit: (eventName, properties) => events.push({ eventName, properties }) },
+    vendorElement: {
+      setCollapsedEntrySuppressed() {},
+      clickControl: () => true,
+    },
+  });
+
+  assert.equal(controller.open('voice'), true);
+  assert.deepEqual(events.map((event) => event.eventName), [
+    'voice_widget_open',
+    'voice_widget_start_call',
+  ]);
+  assert.equal(events[1].properties.mode, 'voice');
+});

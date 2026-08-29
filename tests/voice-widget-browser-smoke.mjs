@@ -22,6 +22,8 @@ const vendorStub = `
         this.setAttribute('data-opened', 'message');
         message.hidden = true;
         close.hidden = false;
+        this.dispatchEvent(new CustomEvent('voice-widget:first-user-turn', { bubbles: true, detail: { mode: 'text' } }));
+        this.dispatchEvent(new CustomEvent('voice-widget:first-agent-response', { bubbles: true, detail: { mode: 'text' } }));
       });
       close.addEventListener('click', () => {
         this.setAttribute('data-opened', 'collapsed');
@@ -76,6 +78,12 @@ test('first-party launcher opens vendor widget only after click and default auto
 
     const vendorStateBefore = await page.locator('elevenlabs-convai').getAttribute('data-opened');
     assert.equal(vendorStateBefore, null);
+    const eventsBeforeOpen = await page.evaluate(() => window.dataLayer.map((payload) => payload.event));
+    assert.ok(eventsBeforeOpen.includes('voice_widget_eligible'));
+    assert.ok(eventsBeforeOpen.includes('voice_widget_launcher_impression'));
+    assert.ok(eventsBeforeOpen.includes('voice_widget_ready'));
+    assert.equal(eventsBeforeOpen.includes('voice_widget_open'), false);
+    assert.equal(eventsBeforeOpen.includes('voice_widget_first_user_message'), false);
     assert.equal(await page.getByRole('button', { name: 'Ask Mia' }).getAttribute('aria-expanded'), 'false');
     assert.equal(await page.evaluate(() => window.voiceWidget.getState().panelOpen), false);
 
@@ -84,6 +92,14 @@ test('first-party launcher opens vendor widget only after click and default auto
     assert.equal(await page.locator('.voice-widget-launcher').getAttribute('aria-expanded'), 'true');
     assert.equal(await page.locator('elevenlabs-convai').getAttribute('data-opened'), 'message');
     assert.equal(await page.locator('elevenlabs-convai').getAttribute('data-limitless-entry-state'), 'open');
+    const events = await page.evaluate(() => window.dataLayer.map((payload) => payload.event));
+    assert.ok(events.includes('voice_widget_eligible'));
+    assert.ok(events.includes('voice_widget_launcher_impression'));
+    assert.ok(events.includes('voice_widget_ready'));
+    assert.ok(events.includes('voice_widget_open'));
+    assert.ok(events.includes('voice_widget_start_message'));
+    assert.ok(events.includes('voice_widget_first_user_message'));
+    assert.ok(events.includes('voice_widget_first_agent_response'));
   } finally {
     await browser.close();
   }
