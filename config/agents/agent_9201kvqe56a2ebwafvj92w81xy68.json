@@ -1,0 +1,11 @@
+{
+  "headline": "Hi, I'm Mia",
+  "body": "Ask about booking, treatments, or a personalized consultation at Purple Basil.",
+  "styles": {
+    "accentColor": "#6E3F58",
+    "background": "rgba(255, 252, 253, 0.97)",
+    "borderColor": "rgba(166, 113, 138, 0.5)",
+    "textColor": "#1f161c",
+    "closeColor": "#A6718A"
+  }
+}

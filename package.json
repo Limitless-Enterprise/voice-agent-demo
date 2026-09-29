@@ -5,8 +5,8 @@
   "description": "Customer test page for the ElevenLabs voice agent",
   "packageManager": "pnpm@10.13.1",
   "scripts": {
-    "dev": "serve . -p 3000",
-    "start": "serve . -p 3000"
+    "dev": "serve . -l tcp://0.0.0.0:3000",
+    "start": "serve . -l tcp://0.0.0.0:3000"
   },
   "devDependencies": {
     "serve": "^14.2.4"

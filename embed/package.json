@@ -1,0 +1,14 @@
+{
+  "name": "limitless-convai-pill",
+  "version": "1.1.0",
+  "description": "Limitless ConvAI pill — ElevenLabs widget + promo bubble via one custom element",
+  "main": "limitless-convai-pill.js",
+  "unpkg": "limitless-convai-pill.js",
+  "files": [
+    "limitless-convai-pill.js"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "UNLICENSED"
+}

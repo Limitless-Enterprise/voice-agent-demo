@@ -41,17 +41,18 @@
     </main>
 
     <!--
-      The widget must stay a direct child of <body>. It positions its expanded
-      panel with position: fixed, so any ancestor with a transform, filter,
-      backdrop-filter, or similar becomes its containing block and collapses the
-      panel to the size of that ancestor.
+      The pill + injected widget stay direct children of <body>. The widget
+      positions its expanded panel with position: fixed, so any ancestor with a
+      transform, filter, backdrop-filter, or similar becomes its containing block
+      and collapses the panel to the size of that ancestor.
     -->
-    <elevenlabs-convai agent-id="agent_9201kvqe56a2ebwafvj92w81xy68"></elevenlabs-convai>
-
     <script
-      src="https://unpkg.com/@elevenlabs/convai-widget-embed"
-      async
+      src="/embed/limitless-convai-pill.js"
+      defer
       type="text/javascript"
     ></script>
+    <limitless-convai-pill
+      agent-id="agent_9201kvqe56a2ebwafvj92w81xy68"
+    ></limitless-convai-pill>
   </body>
 </html>
