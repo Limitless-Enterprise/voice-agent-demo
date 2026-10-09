@@ -73,6 +73,7 @@ Implementation detail (operator-side constant in `limitless-convai-pill.js`): pa
 
 | Client | File | Notes |
 | --- | --- | --- |
+| [Limitless Enterprise](https://limitlessenterprise.ai/) — Eric | `config/agents/agent_4201m4g3sac6ebp8216eg3gtwtvq.json` | Dark shell + teal accent (`#3d9a8b`, ink `#e8eef3`) |
 | [Purple Basil Medspa](https://purplebasilmedspa.com/) — Mia | `config/agents/agent_9201kvqe56a2ebwafvj92w81xy68.json` | Light spa palette (plum `#6E3F58`); loaded by the pill on the demo |
 
 ### How `agent-id` flows

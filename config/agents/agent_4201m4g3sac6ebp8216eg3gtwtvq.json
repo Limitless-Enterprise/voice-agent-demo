@@ -1,0 +1,11 @@
+{
+  "headline": "Hi, I'm Eric",
+  "body": "Ask about consulting, voice agents, or enterprise AI — I'm here to help visitors to limitlessenterprise.ai.",
+  "styles": {
+    "accentColor": "#3d9a8b",
+    "background": "rgba(12, 18, 24, 0.92)",
+    "borderColor": "rgba(61, 154, 139, 0.4)",
+    "textColor": "#e8eef3",
+    "closeColor": "#9aadb8"
+  }
+}
