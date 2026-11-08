@@ -1,0 +1,11 @@
+{
+  "headline": "Hi, I'm Eric (L2)",
+  "body": "Ask me what a service costs. I quote from the live catalog.",
+  "styles": {
+    "accentColor": "#3d9a8b",
+    "background": "rgba(12, 18, 24, 0.92)",
+    "borderColor": "rgba(61, 154, 139, 0.4)",
+    "textColor": "#e8eef3",
+    "closeColor": "#9aadb8"
+  }
+}

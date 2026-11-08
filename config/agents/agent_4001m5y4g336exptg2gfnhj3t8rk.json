@@ -1,0 +1,11 @@
+{
+  "headline": "Hi, I'm Eric (L3)",
+  "body": "Say you'd like to pay the Levels Demo Deposit and I'll walk you through it.",
+  "styles": {
+    "accentColor": "#3d9a8b",
+    "background": "rgba(12, 18, 24, 0.92)",
+    "borderColor": "rgba(61, 154, 139, 0.4)",
+    "textColor": "#e8eef3",
+    "closeColor": "#9aadb8"
+  }
+}
