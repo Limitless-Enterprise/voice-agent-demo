@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>L3 Quote and Pay demo — Limitless Enterprise</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero">
+        <p class="brand">Limitless Enterprise</p>
+        <h1>L3 Quote and Pay</h1>
+        <p class="lede">Everything in L2, plus paying a deposit during the conversation. Payments run in Stripe test mode.</p>
+      </header>
+
+      <section class="guide" aria-label="How to try this agent">
+        <h2 class="guide-title">Try it</h2>
+        <ol class="steps">
+          <li>Say you would like to pay the Levels Demo Deposit.</li>
+          <li>Give a name and a phone number or email when asked. At least one is required.</li>
+          <li>When the agent sends the link, click the <strong>Pay now</strong> button that appears on this page. A secure payment page opens in a new tab.</li>
+          <li>Pay with the Stripe test card <code>4242 4242 4242 4242</code>, any future expiry, any three-digit CVC. Nothing is charged.</li>
+        </ol>
+        <p class="guide-note">
+          Use the assistant bubble in the bottom-right corner to talk or chat.
+          <a href="/levels">All levels</a>
+        </p>
+      </section>
+    </main>
+
+    <script
+      src="/embed/limitless-convai-pill.js"
+      defer
+      type="text/javascript"
+    ></script>
+    <limitless-convai-pill agent-id="agent_4001m5y4g336exptg2gfnhj3t8rk"></limitless-convai-pill>
+    <!-- Payment button helper: shows a Pay now button when the agent sends a payment link. One tag, works next to any ElevenLabs widget. -->
+    <script src="https://platform.limitlessenterprise.ai/widget/payments.v1.js" async></script>
+  </body>
+</html>
